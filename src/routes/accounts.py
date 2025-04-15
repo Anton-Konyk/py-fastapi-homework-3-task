@@ -19,7 +19,25 @@ from database import (
 )
 from exceptions import BaseSecurityError
 from security.interfaces import JWTAuthManagerInterface
+from starlette.responses import JSONResponse
+
+from src.schemas.accounts import UserRegistrationRequestSchema
 
 router = APIRouter()
 
-# Write your code here
+
+@router.post("/register/")
+async def register_user(
+        user_data: UserRegistrationRequestSchema,
+        db: AsyncSession = Depends(get_db)
+) -> JSONResponse:
+
+    existing_user = await db.execute(select(UserModel).
+                                     filter_by(email=user_data.email)
+                                     )
+    if existing_user.scalar():
+        raise HTTPException(
+            status_code=409,
+            detail=f"A user with this email {user_data.email} "
+                   f"already exists."
+        )
