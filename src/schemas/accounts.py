@@ -24,3 +24,8 @@ class UserRegistrationRequestSchema(BaseModel):
             raise ValueError("Password must contain at least one "
                              "special character: @, $, !, %, *, ?, #, &.")
         return value
+
+
+class UserRegistrationResponseSchema(BaseModel):
+    id: int
+    email: EmailStr
