@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timezone
 from typing import cast
 
@@ -21,7 +22,12 @@ from exceptions import BaseSecurityError
 from security.interfaces import JWTAuthManagerInterface
 from starlette.responses import JSONResponse
 
-from src.schemas.accounts import UserRegistrationRequestSchema
+from schemas.accounts import (
+    UserRegistrationRequestSchema,
+    UserRegistrationResponseSchema
+)
+from security.passwords import hash_password
+from security.token_manager import JWTAuthManager
 
 router = APIRouter()
 
@@ -41,3 +47,29 @@ async def register_user(
             detail=f"A user with this email {user_data.email} "
                    f"already exists."
         )
+
+    group = await db.scalar(
+        select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
+    )
+    if not group:
+        raise HTTPException(
+            status_code=500,
+            detail="User group not found in the database"
+        )
+
+    hashed = hash_password(user_data.password)
+    db_user = UserModel(
+        email=user_data.email,
+        _hashed_password=hashed,
+        group=group,
+        activation_token=ActivationTokenModel()
+    )
+    db.add(db_user)
+    await db.commit()
+    await db.refresh(db_user)
+
+    response_data = UserRegistrationResponseSchema(
+        id=db_user.id,
+        email=db_user.email
+    ).dict()
+    return JSONResponse(content=response_data, status_code=201)
