@@ -29,3 +29,35 @@ class UserRegistrationRequestSchema(BaseModel):
 class UserRegistrationResponseSchema(BaseModel):
     id: int
     email: EmailStr
+
+
+class UserActivationRequestSchema(BaseModel):
+    pass
+
+
+class MessageResponseSchema(BaseModel):
+    pass
+
+
+class PasswordResetRequestSchema(BaseModel):
+    pass
+
+
+class PasswordResetCompleteRequestSchema(BaseModel):
+    pass
+
+
+class UserLoginResponseSchema(BaseModel):
+    pass
+
+
+class UserLoginRequestSchema(BaseModel):
+    pass
+
+
+class TokenRefreshRequestSchema(BaseModel):
+    pass
+
+
+class TokenRefreshResponseSchema(BaseModel):
+    pass
