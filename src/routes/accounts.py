@@ -22,7 +22,9 @@ from schemas.accounts import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
     UserActivationRequestSchema,
+    PasswordResetRequestSchema,
     MessageResponseSchema,
+    PasswordResetCompleteRequestSchema,
 )
 from security.passwords import hash_password
 from security.token_manager import JWTAuthManager
@@ -116,5 +118,51 @@ async def account_activation(
 
     return JSONResponse(response_data, status_code=200)
 
-    return JSONResponse(response_data, status_code=200)
 
+@router.post("/password-reset/request/")
+async def password_reset_token_request(
+        user_data: PasswordResetRequestSchema,
+        db: AsyncSession = Depends(get_db)
+) -> JSONResponse:
+
+    existing_user = await db.execute(
+            select(UserModel)
+            .options(
+                     joinedload(UserModel.activation_token),
+                     joinedload(UserModel.password_reset_token),
+                     joinedload(UserModel.refresh_tokens),
+                     )
+            .filter(
+                and_(
+                    UserModel.email == user_data.email,
+                    UserModel.is_active.is_(True)
+                )
+            )
+    )
+    db_user = existing_user.unique().scalar_one_or_none()
+    if not db_user:
+        response_data = PasswordResetCompleteRequestSchema(
+            message="If you are registered, "
+                    "you will receive an email with instructions."
+        ).dict()
+        return JSONResponse(response_data, status_code=200)
+
+    if db_user.activation_token:
+        await db.delete(db_user.activation_token)
+
+    if db_user.password_reset_token:
+        await db.delete(db_user.password_reset_token)
+
+    for token in db_user.refresh_tokens:
+        await db.delete(token)
+
+    new_token = PasswordResetTokenModel(user_id=db_user.id)
+    db.add(new_token)
+    await db.commit()
+    await db.refresh(db_user)
+
+    response_data = PasswordResetCompleteRequestSchema(
+        message="If you are registered, "
+                "you will receive an email with instructions."
+    ).dict()
+    return JSONResponse(response_data, status_code=200)
