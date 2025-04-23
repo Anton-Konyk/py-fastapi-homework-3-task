@@ -24,6 +24,8 @@ from schemas.accounts import (
     UserActivationRequestSchema,
     PasswordResetRequestSchema,
     MessageResponseSchema,
+    PasswordResetTokenRequest,
+    PasswordResetRequestSchema,
     PasswordResetCompleteRequestSchema,
 )
 from security.passwords import hash_password
@@ -121,7 +123,7 @@ async def account_activation(
 
 @router.post("/password-reset/request/")
 async def password_reset_token_request(
-        user_data: PasswordResetRequestSchema,
+        user_data: PasswordResetTokenRequest,
         db: AsyncSession = Depends(get_db)
 ) -> JSONResponse:
 
