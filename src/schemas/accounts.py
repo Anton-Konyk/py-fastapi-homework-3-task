@@ -41,7 +41,7 @@ class MessageResponseSchema(BaseModel):
 
 
 class PasswordResetRequestSchema(BaseModel):
-    pass
+    email: EmailStr
 
 
 class PasswordResetCompleteRequestSchema(BaseModel):
