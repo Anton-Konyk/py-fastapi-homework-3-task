@@ -1,10 +1,7 @@
-import os
-from datetime import datetime, timezone
-from typing import cast
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, status, HTTPException
-from sqlalchemy import select, delete
-from sqlalchemy.exc import SQLAlchemyError
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, joinedload
 
@@ -18,13 +15,13 @@ from database import (
     PasswordResetTokenModel,
     RefreshTokenModel
 )
-from exceptions import BaseSecurityError
 from security.interfaces import JWTAuthManagerInterface
 from starlette.responses import JSONResponse
 
 from schemas.accounts import (
     UserRegistrationRequestSchema,
-    UserRegistrationResponseSchema
+    UserRegistrationResponseSchema,
+    UserActivationRequestSchema,
 )
 from security.passwords import hash_password
 from security.token_manager import JWTAuthManager
@@ -73,3 +70,45 @@ async def register_user(
         email=db_user.email
     ).dict()
     return JSONResponse(content=response_data, status_code=201)
+
+
+@router.post("/activate/")
+async def account_activation(
+        user_data: UserActivationRequestSchema,
+        db: AsyncSession = Depends(get_db)
+) -> JSONResponse:
+    existing_user = await db.execute(
+        select(UserModel)
+        .options(joinedload(UserModel.activation_token))
+        .filter_by(email=user_data.email)
+    )
+    db_user = existing_user.scalar_one_or_none()
+    if not db_user:
+        raise HTTPException(
+            status_code=409,
+            detail=f"User was not created in the database."
+        )
+
+    if (not db_user.activation_token
+        or db_user.activation_token.token != user_data.token
+        or db_user.activation_token.expires_at < datetime.utcnow()
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired activation token."
+        )
+
+    if db_user.is_active is True:
+        raise HTTPException(
+            status_code=400,
+            detail="User account is already active."
+        )
+
+    db_user.is_active = True
+    db_user.activation_token = None
+    await db.commit()
+    await db.refresh(db_user)
+
+    return JSONResponse(
+        content={"message": "User account activated successfully."},
+        status_code=200)
