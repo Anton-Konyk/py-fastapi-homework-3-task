@@ -22,7 +22,6 @@ from schemas.accounts import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
     UserActivationRequestSchema,
-    PasswordResetRequestSchema,
     MessageResponseSchema,
     PasswordResetTokenRequest,
     PasswordResetRequestSchema,
@@ -163,7 +162,7 @@ async def password_reset_token_request(
     await db.commit()
     await db.refresh(db_user)
 
-    response_data = PasswordResetCompleteRequestSchema(
+    response_data = MessageResponseSchema(
         message="If you are registered, "
                 "you will receive an email with instructions."
     ).dict()
