@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, joinedload
 
@@ -22,6 +22,7 @@ from schemas.accounts import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
     UserActivationRequestSchema,
+    MessageResponseSchema,
 )
 from security.passwords import hash_password
 from security.token_manager import JWTAuthManager
@@ -112,3 +113,9 @@ async def account_activation(
     return JSONResponse(
         content={"message": "User account activated successfully."},
         status_code=200)
+    response_data = MessageResponseSchema(
+        message="User account activated successfully."
+    ).dict()
+
+    return JSONResponse(response_data, status_code=200)
+
