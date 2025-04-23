@@ -110,12 +110,11 @@ async def account_activation(
     await db.commit()
     await db.refresh(db_user)
 
-    return JSONResponse(
-        content={"message": "User account activated successfully."},
-        status_code=200)
     response_data = MessageResponseSchema(
         message="User account activated successfully."
     ).dict()
+
+    return JSONResponse(response_data, status_code=200)
 
     return JSONResponse(response_data, status_code=200)
 
