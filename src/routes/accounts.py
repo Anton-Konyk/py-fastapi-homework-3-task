@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, and_
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, joinedload
 
@@ -58,16 +59,22 @@ async def register_user(
             detail="User group not found in the database"
         )
 
-    hashed = hash_password(user_data.password)
-    db_user = UserModel(
-        email=user_data.email,
-        _hashed_password=hashed,
-        group=group,
-        activation_token=ActivationTokenModel()
-    )
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
+    try:
+        db_user = UserModel(
+            email=user_data.email,
+            password=user_data.password,
+            group=group,
+            activation_token=ActivationTokenModel()
+        )
+        db.add(db_user)
+        await db.commit()
+        await db.refresh(db_user)
+    except SQLAlchemyError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred during user creation."
+        )
 
     response_data = UserRegistrationResponseSchema(
         id=db_user.id,
