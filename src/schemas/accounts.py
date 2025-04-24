@@ -40,7 +40,7 @@ class MessageResponseSchema(BaseModel):
     message: str
 
 
-class PasswordResetTokenRequest(BaseModel):
+class PasswordResetTokenRequestSchema(BaseModel):
     email: EmailStr
 
 
