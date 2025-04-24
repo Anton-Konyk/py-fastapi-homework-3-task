@@ -174,3 +174,64 @@ async def password_reset_token_request(
                 "you will receive an email with instructions."
     ).dict()
     return JSONResponse(response_data, status_code=200)
+
+
+@router.post("/reset-password/complete/")
+async def password_reset_completion_endpoint(
+        user_data: PasswordResetRequestSchema,
+        db: AsyncSession = Depends(get_db)
+) -> JSONResponse:
+    existing_user = await db.execute(
+        select(UserModel)
+        .options(joinedload(UserModel.password_reset_token))
+        .filter(
+            and_(
+                UserModel.email == user_data.email,
+            )
+        )
+    )
+    db_user = existing_user.unique().scalar_one_or_none()
+    if not db_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid email or token."
+        )
+
+    if db_user.is_active is not True:
+        raise HTTPException(
+            status_code=400,
+            detail="User account is not active."
+        )
+
+    if db_user.password_reset_token.token != user_data.token:
+        await db.delete(db_user.password_reset_token)
+        await db.commit()
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid email or token."
+        )
+    if db_user.password_reset_token.expires_at < datetime.now():
+        await db.delete(db_user.password_reset_token)
+        await db.commit()
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid email or token."
+        )
+    try:
+        db_user.password = user_data.password
+        await db.flush()
+        await db.delete(db_user.password_reset_token)
+        await db.commit()
+        await db.refresh(db_user)
+
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred while resetting the password."
+        )
+
+    response_data = MessageResponseSchema(
+        message="Password reset successfully."
+    ).dict()
+    return JSONResponse(response_data, status_code=200)
