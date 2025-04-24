@@ -102,7 +102,7 @@ async def account_activation(
 
     if (not db_user.activation_token
         or db_user.activation_token.token != user_data.token
-        or db_user.activation_token.expires_at < datetime.utcnow()
+        or db_user.activation_token.expires_at < datetime.now()
     ):
         raise HTTPException(
             status_code=400,
