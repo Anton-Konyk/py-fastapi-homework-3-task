@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, and_
@@ -23,7 +23,7 @@ from schemas.accounts import (
     UserRegistrationResponseSchema,
     UserActivationRequestSchema,
     MessageResponseSchema,
-    PasswordResetTokenRequest,
+    PasswordResetTokenRequestSchema,
     PasswordResetRequestSchema,
     PasswordResetCompleteRequestSchema,
 )
@@ -122,7 +122,7 @@ async def account_activation(
 
 @router.post("/password-reset/request/")
 async def password_reset_token_request(
-        user_data: PasswordResetTokenRequest,
+        user_data: PasswordResetTokenRequestSchema,
         db: AsyncSession = Depends(get_db)
 ) -> JSONResponse:
 
