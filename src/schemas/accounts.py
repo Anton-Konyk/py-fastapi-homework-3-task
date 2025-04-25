@@ -52,6 +52,10 @@ class PasswordResetCompleteRequestSchema(BaseModel):
     message: str
 
 
+class UserLoginRequestSchema(UserRegistrationRequestSchema):
+    pass
+
+
 class UserLoginResponseSchema(BaseModel):
     access_token: str
     refresh_token: str
