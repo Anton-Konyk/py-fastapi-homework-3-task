@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -27,6 +28,8 @@ from schemas.accounts import (
     PasswordResetTokenRequestSchema,
     PasswordResetRequestSchema,
     PasswordResetCompleteRequestSchema,
+    UserLoginResponseSchema,
+    UserLoginRequestSchema,
 )
 from security.passwords import hash_password
 from security.token_manager import JWTAuthManager
@@ -235,3 +238,62 @@ async def password_reset_completion_endpoint(
         message="Password reset successfully."
     ).dict()
     return JSONResponse(response_data, status_code=200)
+
+
+@router.post("/login/")
+async def user_login_endpoint(
+        user_data: UserLoginRequestSchema,
+        jwt_manager:
+        JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        db: AsyncSession = Depends(get_db)
+) -> JSONResponse:
+    existing_user = await db.execute(
+        select(UserModel)
+        .filter(
+            and_(
+                UserModel.email == user_data.email,
+            )
+        )
+    )
+    db_user = existing_user.scalar_one_or_none()
+    if not db_user or not db_user.verify_password(user_data.password):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password."
+        )
+
+    if db_user.is_active is False:
+        raise HTTPException(
+            status_code=403,
+            detail="User account is not activated."
+        )
+
+    try:
+        access_token = jwt_manager.create_access_token({"user_id": db_user.id})
+        refresh_token = jwt_manager.create_refresh_token({"user_id": db_user.id})
+
+        refresh_token_model = RefreshTokenModel.create(
+            user_id=db_user.id,
+            days_valid=os.getenv("REFRESH_TOKEN_DAYS_VALID", 1),
+            token=refresh_token
+        )
+
+        db.add(refresh_token_model)
+
+        await db.flush()
+        await db.commit()
+        await db.refresh(db_user)
+
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred while processing the request."
+        )
+
+    response_data = UserLoginResponseSchema(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer"
+    ).dict()
+    return JSONResponse(response_data, status_code=201)
