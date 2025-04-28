@@ -17,6 +17,7 @@ from database import (
     PasswordResetTokenModel,
     RefreshTokenModel,
 )
+from exceptions import InvalidTokenError, TokenExpiredError
 from security.interfaces import JWTAuthManagerInterface
 from starlette.responses import JSONResponse
 
@@ -30,6 +31,8 @@ from schemas.accounts import (
     PasswordResetCompleteRequestSchema,
     UserLoginResponseSchema,
     UserLoginRequestSchema,
+    TokenRefreshRequestSchema,
+    TokenRefreshResponseSchema,
 )
 
 router = APIRouter()
@@ -285,8 +288,56 @@ async def user_login_endpoint(
     ).dict()
     return JSONResponse(response_data, status_code=201)
 
+
+@router.post("/refresh/")
+async def access_token_refresh_endpoint(
+    user_data: TokenRefreshRequestSchema,
+    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    db: AsyncSession = Depends(get_db),
+) -> JSONResponse:
+
+    try:
+        payload = jwt_manager.decode_refresh_token(user_data.refresh_token)
+        user_id = payload["user_id"]
+
+    except InvalidTokenError:
+        raise HTTPException(
+            status_code=401,
+            detail="Refresh token not found."
+        )
+    except TokenExpiredError:
+        raise HTTPException(
+            status_code=400,
+            detail="Token has expired."
+        )
+
+    existing_token = await db.execute(
+        select(RefreshTokenModel).filter(
+            RefreshTokenModel.token == user_data.refresh_token
+        )
+    )
+    token_db = existing_token.scalar()
+    if not token_db:
+        raise HTTPException(
+            status_code=401,
+            detail="Refresh token not found."
+        )
+
+    existing_user = await db.execute(
+        select(UserModel)
+        .options(selectinload(UserModel.refresh_tokens))
+        .filter(UserModel.id == user_id)
+    )
+    user_db = existing_user.scalar()
+    if not user_db:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found."
+        )
+
+    access_token = jwt_manager.create_access_token({"user_id": user_id})
+
+    response_data = TokenRefreshResponseSchema(
         access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer"
     ).dict()
-    return JSONResponse(response_data, status_code=201)
+    return JSONResponse(response_data, status_code=200)
