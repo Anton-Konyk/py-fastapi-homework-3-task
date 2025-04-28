@@ -254,7 +254,10 @@ async def user_login_endpoint(
             detail="Invalid email or password.")
 
     if db_user.is_active is False:
-        raise HTTPException(status_code=403, detail="User account is not activated.")
+        raise HTTPException(
+            status_code=403,
+            detail="User account is not activated."
+        )
 
     try:
         access_token = (
