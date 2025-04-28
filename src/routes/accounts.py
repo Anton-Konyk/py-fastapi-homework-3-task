@@ -153,7 +153,7 @@ async def password_reset_token_request(
     )
     db_user = existing_user.unique().scalar_one_or_none()
     if not db_user:
-        response_data = PasswordResetCompleteRequestSchema(
+        response_data = MessageResponseSchema(
             message="If you are registered, "
                     "you will receive an email with instructions."
         ).dict()
