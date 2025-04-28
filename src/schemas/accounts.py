@@ -69,4 +69,4 @@ class TokenRefreshRequestSchema(BaseModel):
 
 
 class TokenRefreshResponseSchema(BaseModel):
-    pass
+    access_token: str
