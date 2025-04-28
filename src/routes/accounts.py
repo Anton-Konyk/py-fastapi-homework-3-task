@@ -155,7 +155,7 @@ async def password_reset_token_request(
     if not db_user:
         response_data = PasswordResetCompleteRequestSchema(
             message="If you are registered, "
-            "you will receive an email with instructions."
+                    "you will receive an email with instructions."
         ).dict()
         return JSONResponse(response_data, status_code=200)
 
