@@ -229,7 +229,7 @@ async def password_reset_completion_endpoint(
         await db.rollback()
         raise HTTPException(
             status_code=500,
-            detail=f"An error occurred while resetting the password."
+            detail="An error occurred while resetting the password."
         )
 
     response_data = MessageResponseSchema(
@@ -281,7 +281,7 @@ async def user_login_endpoint(
         await db.rollback()
         raise HTTPException(
             status_code=500,
-            detail=f"An error occurred while processing the request."
+            detail="An error occurred while processing the request."
         )
 
     response_data = UserLoginResponseSchema(
